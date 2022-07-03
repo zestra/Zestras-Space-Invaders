@@ -31,6 +31,9 @@ car_images = {"blue": ["blue", "blue2", "blue3", "blue4", "blue5", "blue6", "blu
               "green": ["green", "green2", "green3", "green4", "green5", "green6", "green7", "green8", "green9",
                         "green10"]}
 
+rule = 1
+game_over = False
+
 
 class ManualCar:
     def __init__(self, code, images, x, y):
@@ -126,8 +129,15 @@ class ManualCar:
 
 
     def draw(self):
+
+        if self.run is not True:
+            return
+
         self.car.draw()
-        show_text(str(self.velocity), self.x - top_left_x + 3, self.y - top_left_y - 50, WHITE, 25)
+        # if self.car in cars2:
+        #     show_text("Alien", self.x - top_left_x + 3, self.y - top_left_y - 50, WHITE, 25)
+        # else:
+        #     show_text("Hero", self.x - top_left_x + 3, self.y - top_left_y - 50, WHITE, 25)
 
         index = len(self.images) - 1
         for info in self.trace:
@@ -166,22 +176,24 @@ class AutoCar(ManualCar):
             return
 
         target = None
+
         distance_from_target = 10000
-        for car in cars1:
-            if car.run:
+        for car in cars:
+            if car.run and car.code != self.code:
                 distance_from_target2 = math.sqrt(((car.x - self.x) ** 2) + ((car.y - self.y) ** 2))
                 if distance_from_target2 < distance_from_target:
                     distance_from_target = distance_from_target2
                     target = car
 
-        # target = None
-        # distance_from_target = 10000
-        # for car in cars:
-        #     if car.run and car.code != self.code:
-        #         distance_from_target2 = math.sqrt(((car.x - self.x) ** 2) + ((car.y - self.y) ** 2))
-        #         if distance_from_target2 < distance_from_target:
-        #             distance_from_target = distance_from_target2
-        #             target = car
+        if rule == 1:
+            distance_from_target = 10000
+            list = cars1
+            for car in cars1:
+                if car.run:
+                    distance_from_target2 = math.sqrt(((car.x - self.x) ** 2) + ((car.y - self.y) ** 2))
+                    if distance_from_target2 < distance_from_target:
+                        distance_from_target = distance_from_target2
+                        target = car
 
         if target is None:
             return
@@ -228,12 +240,20 @@ class AutoCar(ManualCar):
 
 cars.append(ManualCar(0, car_images["blue"], 0, 0))
 cars1.append(cars[0])
+# for i in range(5):
+#     cars.append(AutoCar(len(cars) - 1, car_images["red"], random.randint(-top_left_x, top_left_x),
+#                         random.randint(-top_left_y, top_left_y)))
+#     cars1.append(cars[len(cars) - 1])
+#     cars[len(cars) - 1].velocity = 25
 
-for i in range(0, 5):
-    cars.append(AutoCar(i + 1, car_images["red"], random.randrange(-top_left_x, top_left_x, 1),
+
+for i in range(0, 20):
+    cars.append(AutoCar(i + 1, car_images["green"], random.choice([-top_left_x + 100, top_left_x - 100]),
                         random.randrange(-top_left_y, top_left_y, 1)))
-    cars2.append(cars[i + 1])
-    # cars[i + 1].velocity = 1
+    # cars.append(AutoCar(len(cars) - 1, car_images["green"], random.randint(-top_left_x, top_left_x),
+    #                     random.randint(-top_left_y, top_left_y)))
+    cars2.append(cars[len(cars) - 1])
+    cars[len(cars) - 1].velocity = 7.5
 
 
 color = (0, 0, 255)
@@ -259,18 +279,54 @@ def draw():
         if index == 0:
             dim = False
     color = (0, 0, 255 - 5 * index)
+
+    if game_over:
+        show_text("GAME OVER", -450, -100, color, 200)
+        return
+
     show_text("Press UP and DOWN to ACCELERATE \n Press RIGHT and LEFT to TURN", -top_left_x + 50, -top_left_y + 50,
               color, 35)
 
     # Show cars
     for car in cars:
-        if car.run:
-            car.draw()
+        car.draw()
 
 
 def update():
+    global rule, game_over
+
+    if game_over:
+        return
+
     for car in cars:
         car.update()
+
+    # If heroes are all killed, let the enemies kill one another, rule 2.
+    counter = 0
+    for car in cars1:
+        if car.run:
+            counter += 1
+    if counter == 0:
+        rule = 2
+
+    # If hero is alive, and enemies are all dead, game over.
+    if counter > 0:
+        counter2 = 0
+        for car in cars2:
+            if car.run:
+                counter2 += 1
+        if counter2 == 0:
+            game_over = True
+
+    # If all cars are dead, game over.
+    counter3 = 0
+    for car in cars:
+        if car.run:
+            counter3 += 1
+    if counter3 in [0, 1]:
+        game_over = True
+
+
 
 
 def draw_image(image, x, y):
@@ -310,5 +366,6 @@ def theme():
 
 theme()
 clock.schedule_interval(theme, 96)
+
 
 pgzrun.go()
