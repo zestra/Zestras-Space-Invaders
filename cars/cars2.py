@@ -53,6 +53,7 @@ class ManualCar:
     def update(self):
         global cars, cars1
 
+        # MOVING CAR
         if keyboard.left:
             self.car.angle += 10
         elif keyboard.right:
@@ -69,6 +70,7 @@ class ManualCar:
         self.car.y += self.velocity*math.sin(math.radians(self.car.angle - 90))
         self.y += self.velocity*math.sin(math.radians(self.car.angle - 90))
 
+        # MAGIC SPACE EFFECT
         if (self.x > WIDTH or self.x < 0)\
                 or (self.y > HEIGHT or self.y < 0):
 
@@ -86,15 +88,8 @@ class ManualCar:
                 self.car.y = HEIGHT
                 self.y = HEIGHT
 
-        # image2 = random.choice(car_images)
-        # while image2 == self.image:
-        #     image2 = random.choice(car_images)
-        # self.image = image2
-        # angle = self.car.angle
-        # self.car.image = self.image
-        # self.car.angle = angle
-
-        if len(self.trace) > 5:
+        # CAR FADING TRAIL EFFECT
+        if len(self.trace) > len(self.images) - 1:
             del self.trace[0]
         self.trace.append([self.x, self.y, self.car.angle])
 
@@ -105,17 +100,90 @@ class ManualCar:
         self.car.draw()
         show_text(str(self.velocity), self.x - top_left_x + 3, self.y - top_left_y - 50, WHITE, 25)
 
-        if int(self.velocity) <= 75:
-            index = len(self.images) - 1
-            for info in self.trace:
-                x, y, angle = info[0], info[1], info[2]
-                self.car2.x = x
-                self.car2.y = y
-                self.car2.image = self.images[index]
-                self.car2.angle = angle
-                self.car2.draw()
+        # if int(self.velocity) <= 75:
+        #     index = len(self.images) - 1
+        #     for info in self.trace:
+        #         self.car2.x = int(info[0])
+        #         self.car2.y = int(info[1])
+        #         self.car2.image = self.images[index], self.car2.angle = info[2]
+        #         self.car2.draw()
+        #         index -= 1
 
-                index -= 1
+
+class AutoCar(ManualCar):
+    def __init__(self, name, images, x, y):
+        self.name = name
+
+        self.images = images
+        self.image = self.images[0]
+
+        self.x = x + top_left_x
+        self.y = y + top_left_y
+
+        self.velocity = 5
+
+        self.car = Actor(self.image, center=(self.x, self.y))
+
+        self.car2 = Actor(self.image, center=(self.x, self.y))
+
+        self.trace = [  # parameters: x, y, angle
+                     ]
+
+    def update(self):
+        for car1 in cars1:
+            target = cars1[car1]
+            name = car1
+            break
+        distance_from_target = 10000
+        for car1 in cars1:
+            distance_from_target2 = math.sqrt(((info[car1][0] - self.x)**2) + ((info[car1][1] - self.y)**2))
+            if distance_from_target2 < distance_from_target:
+                distance_from_target = distance_from_target2
+                target = cars1[car1]
+                name = car1
+
+        if (target.x - self.x) != 0:
+            angle_to_target = math.degrees(math.atan2((target.y - self.y), (target.x - self.x))) + 90
+        else:
+            angle_to_target = 0
+
+        self.car.angle = -angle_to_target
+
+        self.car.x += self.velocity*math.cos(math.radians(angle_to_target - 90))
+        self.x += self.velocity*math.cos(math.radians(angle_to_target - 90))
+
+        self.car.y += self.velocity*math.sin(math.radians(angle_to_target - 90))
+        self.y += self.velocity*math.sin(math.radians(angle_to_target - 90))
+
+        # MAGIC SPACE EFFECT
+        if (self.x > WIDTH or self.x < 0)\
+                or (self.y > HEIGHT or self.y < 0):
+
+            if self.x > WIDTH:
+                self.car.x = 0
+                self.x = 0
+            elif self.x < 0:
+                self.car.x = WIDTH
+                self.x = WIDTH
+
+            if self.y > HEIGHT:
+                self.car.y = 0
+                self.y = 0
+            elif self.y < 0:
+                self.car.y = HEIGHT
+                self.y = HEIGHT
+
+        # CAR FADING TRAIL EFFECT
+        if len(self.trace) > len(self.images) - 1:
+            del self.trace[0]
+        self.trace.append([self.x, self.y, self.car.angle])
+
+        return self.x, self.y
+
+
+        
+
+
 
 
 cars["Car 101"] = ManualCar("Car 101", ["blue",
@@ -127,6 +195,14 @@ cars["Car 101"] = ManualCar("Car 101", ["blue",
                            0, 0)
 cars1["Car 101"] = cars["Car 101"]
 info["Car 101"] = [0, 0]
+
+cars["Car 102"] = AutoCar("Car 102", ["red"], -2*top_left_x, -(1/512)*top_left_y)
+cars2["Car 102"] = cars["Car 102"]
+info["Car 102"] = [cars2["Car 102"].x, cars2["Car 102"].y]
+
+# cars["Car 103"] = AutoCar("Car 103", ["green"], -2*top_left_x, -(1/4)*top_left_y)
+# cars2["Car 103"] = cars["Car 103"]
+# info["Car 103"] = [cars2["Car 103"].x, cars2["Car 102"].y]
 
 color = (0,  0, 255)
 index = 0
@@ -212,7 +288,6 @@ def show_text(text_to_show, x, y,
                      (top_left_x + x, top_left_y + y),
                      fontsize=size, color=colour)
 
-# for car in cars:
-#     clock.schedule_interval(cars[car].update, 0.1)
+
 
 pgzrun.go()
