@@ -32,6 +32,10 @@ car_images = {"them_ship": ["them_ship", "them_ship2", "them_ship3", "them_ship4
 rule = 1
 game_over = False
 
+norm_shooter = False
+still_shooter = False
+slider_shooter = True
+
 
 class ManualCar:
     def __init__(self, code, type, image2, images, x, y):
@@ -72,25 +76,41 @@ class ManualCar:
                 self.timer = 0
 
         # Moving the car
-        if keyboard.left:
-            self.car.angle += 10
-            self.shield.angle = self.car.angle
-        elif keyboard.right:
-            self.car.angle -= 10
-            self.shield.angle = self.car.angle
+
+        if slider_shooter is False:
+            if keyboard.left:
+                if still_shooter:
+                    self.car.angle += 1
+                else:
+                    self.car.angle += 10
+                self.shield.angle = self.car.angle
+            elif keyboard.right:
+                if still_shooter:
+                    self.car.angle -= 1
+                else:
+                    self.car.angle -= 10
+                self.shield.angle = self.car.angle
+        else:
+            if keyboard.left:
+                self.car.x -= 10
+                self.x = self.car.x
+            if keyboard.right:
+                self.car.x += 10
+                self.x = self.car.x
 
         if keyboard.up and self.velocity <= 15:
             self.velocity += 1
         elif keyboard.down and self.velocity >= -15:
             self.velocity -= 1
 
-        self.car.x -= self.velocity * math.cos(math.radians(self.car.angle - 90))
-        self.shield.x = self.car.x
-        self.x = self.car.x
+        if still_shooter is False and slider_shooter is False:
+            self.car.x -= self.velocity * math.cos(math.radians(self.car.angle - 90))
+            self.shield.x = self.car.x
+            self.x = self.car.x
 
-        self.car.y += self.velocity * math.sin(math.radians(self.car.angle - 90))
-        self.shield.y = self.car.y
-        self.y = self.car.y
+            self.car.y += self.velocity * math.sin(math.radians(self.car.angle - 90))
+            self.shield.y = self.car.y
+            self.y = self.car.y
 
         # Magic space effect
         if (self.x > WIDTH or self.x < 0) \
@@ -206,7 +226,7 @@ class AutoCar(ManualCar):
 
         target = None
 
-        distance_from_target = 1000
+        distance_from_target = 20000
         if self.type in ["us", "you"]:
             kind = ["them"]
         elif self.type == "them":
@@ -214,11 +234,12 @@ class AutoCar(ManualCar):
         elif self.type == "any":
             kind = ["them", "us", "you", "any"]
         for car in cars:
-            if car.run and car.type in kind and car.code != self.code:
+            if (car.run) and (self.run) and (car.type in kind) and (car.code != self.code):
                 distance_from_target2 = math.sqrt(((car.x - self.x) ** 2) + ((car.y - self.y) ** 2))
                 if distance_from_target2 < distance_from_target:
                     distance_from_target = distance_from_target2
                     target = car
+
         if target is None:
             return
 
@@ -237,6 +258,7 @@ class AutoCar(ManualCar):
         self.car.y += self.velocity * math.sin(math.radians(angle_to_target - 90))
         self.shield.y = self.car.y
         self.y = self.car.y
+
         # MAGIC SPACE EFFECT
         if (self.x > WIDTH or self.x < 0) \
                 or (self.y > HEIGHT or self.y < 0):
@@ -272,6 +294,7 @@ class AutoCar(ManualCar):
 
         # Check collision
         self.check_collision()
+
 
 class Laser:
     def __init__(self, code, type, x, y, angle, speed, auto=False):
@@ -380,11 +403,19 @@ class Laser:
 
         self.laser.draw()
 
-cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 0))
+if norm_shooter:
+    cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 0))
+elif still_shooter:
+    cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 400))
+elif slider_shooter:
+    cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 300))
 
 
 def initialize():
     global cars
+
+    if len(cars) >= 35:
+        return
     # for i in range(0, 5):
     #     # cars.append(AutoCar(len(cars), "n", car_images["red"], random.choice([int(-top_left_x) + 100, int(top_left_x) - 100]),
     #     #                     random.randrange(int(-top_left_y), int(top_left_y), 1)))
@@ -402,10 +433,13 @@ def initialize():
     #     cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], random.randint(-top_left_x, top_left_x),
     #                         -500))
     #     cars[len(cars) - 1].velocity = 1
-    for y in range(1):
-        for x in range(-10, 10):
-            cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], x*70, y*70 - HEIGHT/2 + 75))
-            cars[len(cars) - 1].velocity = 1
+    # for y in range(1):
+    #     for x in range(-10, 10):
+    #         cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], x*70, y*70 - HEIGHT/2 + 75))
+    #         cars[len(cars) - 1].velocity = 1
+    for num in range(random.randint(1, 10)):
+        cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], random.randint(-10, 10)*70, 70 - HEIGHT/2 + 75))
+        cars[len(cars) - 1].velocity = 1
 
 
 initialize()
@@ -455,7 +489,12 @@ def update():
         if keyboard.space:
             cars = []
             lasers = []
-            cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 0))
+            if norm_shooter:
+                cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 0))
+            elif still_shooter:
+                cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 400))
+            elif slider_shooter:
+                cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 300))
             initialize()
             game_over = False
         return
@@ -472,6 +511,7 @@ def update():
         for car in cars:
             if car.run and car.type == "them":
                 car.type = "any"
+            car.velocity = 5
 
     # If hero is alive, and enemies are all dead, game over.
     if counter > 0:
