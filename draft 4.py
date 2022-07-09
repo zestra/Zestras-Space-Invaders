@@ -1,5 +1,5 @@
 import pygame, pgzero, pgzrun
-import math, random
+import math, random, time
 
 BLACK = (0, 0, 0)
 BLUE = (0, 155, 255)
@@ -23,6 +23,7 @@ top_left_x = WIDTH / 2
 top_left_y = HEIGHT / 2
 
 cars = []
+lasers = []
 
 car_images = {"them_ship": ["them_ship", "them_ship2", "them_ship3", "them_ship4", "them_ship5", "them_ship6", "them_ship7", "them_ship8"],
               "you_ship": ["you_ship", "you_ship2", "you_ship3", "you_ship4", "you_ship5", "you_ship6", "you_ship7", "you_ship8"],
@@ -33,10 +34,11 @@ game_over = False
 
 
 class ManualCar:
-    def __init__(self, code, type, images, x, y):
+    def __init__(self, code, type, image2, images, x, y):
         self.code = code
         self.type = type
 
+        self.image2 = image2
         self.images = images
         self.image = self.images[0]
 
@@ -57,11 +59,17 @@ class ManualCar:
         self.run = True
 
         self.shield_on = True
+        self.timer = 0
 
     def update(self):
 
         if self.run is not True:
             return
+
+        if self.timer != 0:
+            self.timer += 1
+            if self.timer == 10:
+                self.timer = 0
 
         # Moving the car
         if keyboard.left:
@@ -71,10 +79,9 @@ class ManualCar:
             self.car.angle -= 10
             self.shield.angle = self.car.angle
 
-
-        if keyboard.up and self.velocity <= 5:
+        if keyboard.up and self.velocity <= 15:
             self.velocity += 1
-        elif keyboard.down and self.velocity >= -5:
+        elif keyboard.down and self.velocity >= -15:
             self.velocity -= 1
 
         self.car.x -= self.velocity * math.cos(math.radians(self.car.angle - 90))
@@ -102,6 +109,12 @@ class ManualCar:
             elif self.y < 0:
                 self.car.y = HEIGHT
                 self.y = HEIGHT
+
+        # Lasers
+        if keyboard.space and self.timer == 0:
+            lasers.append(Laser(len(lasers), "you", self.x, self.y, self.car.angle, self.velocity, False))
+            sounds.player_laser.play()
+            self.timer = 1
 
         # Check collision
         self.check_collision()
@@ -154,10 +167,11 @@ class ManualCar:
 
 
 class AutoCar(ManualCar):
-    def __init__(self, code, type, images, x, y):
+    def __init__(self, code, type, image2, images, x, y):
         self.code = code
         self.type = type
 
+        self.image2 = image2
         self.images = images
         self.image = self.images[0]
 
@@ -178,6 +192,7 @@ class AutoCar(ManualCar):
         self.run = True
 
         self.shield_on = True
+
     def update(self):
 
         if self.run is not True:
@@ -186,12 +201,12 @@ class AutoCar(ManualCar):
         target = None
 
         distance_from_target = 10000
-        if self.type == "us":
+        if self.type in ["us", "you"]:
             kind = ["them"]
         elif self.type == "them":
-            kind = ["us"]
+            kind = ["us", "you"]
         elif self.type == "any":
-            kind = ["them", "us", "any"]
+            kind = ["them", "us", "you", "any"]
         for car in cars:
             if car.run and car.type in kind and car.code != self.code:
                 distance_from_target2 = math.sqrt(((car.x - self.x) ** 2) + ((car.y - self.y) ** 2))
@@ -203,7 +218,7 @@ class AutoCar(ManualCar):
             return
 
         if (target.x - self.x) != 0:
-            angle_to_target = math.degrees(math.atan2((target.y - self.y), (target.x - self.x))) + 90
+            angle_to_target = int((math.degrees(math.atan2((target.y - self.y), (target.x - self.x))) + 90)/10) * 10
         else:
             angle_to_target = 0
 
@@ -244,29 +259,140 @@ class AutoCar(ManualCar):
         # Check collision
         self.check_collision()
 
+class Laser:
+    def __init__(self, code, type, x, y, angle, speed, auto=False):
+        self.code = code
+        self.type = type
+
+        self.angle = angle
+        self.x = x - 25*math.cos(math.radians(self.angle - 90))
+        self.y = y + 25*math.sin(math.radians(self.angle - 90))
+
+        self.speed = 10 + speed
+
+        self.auto = auto
+
+        if self.type == "you":
+            self.image = "you_pellet"
+            self.image2 = images.you_pellet
+        elif self.type == "us":
+            self.image = "us_pellet"
+            self.image2 = images.us_pellet
+        elif self.type == "them":
+            self.image = "them_pellet"
+            self.image2 = images.them_pellet
+        else:
+            self.image = "them_pellet"
+            self.image2 = images.them_pellet
+
+        self.laser = Actor(self.image, center=(self.x, self.y))
+        self.laser.angle = self.angle
+
+        self.run = True
+        self.death_timer = random.randint(20, 50)
+
+    def norm(self):
+        self.x -= self.speed * math.cos(math.radians(self.laser.angle - 90))
+        self.laser.x = self.x
+
+        self.y += self.speed * math.sin(math.radians(self.laser.angle - 90))
+        self.laser.y = self.y
+
+        # MAGIC SPACE EFFECT
+        if (self.x > WIDTH or self.x < 0) \
+                or (self.y > HEIGHT or self.y < 0):
+
+            if self.x > WIDTH:
+                self.laser.x = 0
+                self.x = 0
+            elif self.x < 0:
+                self.laser.x = WIDTH
+                self.x = WIDTH
+
+            if self.y > HEIGHT:
+                self.laser.y = 0
+                self.y = 0
+            elif self.y < 0:
+                self.laser.y = HEIGHT
+                self.y = HEIGHT
+
+    def automatic(self):
+        pass
+
+    def check_collision(self):
+        global cars, lasers
+
+        if self.run is False:
+            return
+
+        collided = False
+        index = 0
+        for object in cars + lasers:
+            if object.run is True:
+                # if (car.x == self.car.x) and (car.y == self.car.y):  # If car too near another car...
+                if (object.x - int(object.image2.get_width()/2) < self.x < object.x + int(object.image2.get_width()/2)) \
+                        and (object.y - int(object.image2.get_height()/2) < self.y < object.y + int(object.image2.get_height()/2))\
+                        and object.code != self.code:
+                    # ... there has been a collision.
+                    object.run = False  # Destroy both cars.
+                    self.run = False
+                    collided = True
+
+                    sounds.collision.play()  # Run sound effect
+            if collided:
+                break
+            index += 1
+
+    def update(self):
+
+        if self.run is False:
+            return
+
+        self.death_timer -= 1
+        if self.death_timer == 0:
+            self.run = False
+            return
+
+        if self.auto is False:
+            self.norm()
+        else:
+            self.automatic()
+
+        self.check_collision()
+
+    def draw(self):
+        if self.run is False:
+            return
+
+        self.laser.draw()
+
 
 def initialize():
     global cars
 
-    cars.append(ManualCar(0, "us", car_images["you_ship"], 0, 0))
+    cars.append(ManualCar(0, "you", images.you_ship, car_images["you_ship"], 0, 0))
 
-    for i in range(0, 5):
-        # cars.append(AutoCar(len(cars), "n", car_images["red"], random.choice([int(-top_left_x) + 100, int(top_left_x) - 100]),
-        #                     random.randrange(int(-top_left_y), int(top_left_y), 1)))
-        # cars.append(AutoCar(len(cars), "n", car_images["red"], random.randint(-top_left_x, top_left_x),
-        #                     random.randint(-top_left_y, top_left_y)))
-        cars.append(AutoCar(len(cars), "us", car_images["us_ship"], random.randint(-top_left_x, top_left_x),
-                            500))
-        # cars[len(cars) - 1].velocity = 1
-
-    for i in range(0, 20):
-        # cars.append(AutoCar(len(cars), "y", car_images["green"], random.choice([int(-top_left_x) + 100, int(top_left_x) - 100]),
-        #                     random.randrange(int(-top_left_y), int(top_left_y), 1)))
-        # cars.append(AutoCar(len(cars), "y", car_images["green"], random.randint(-top_left_x, top_left_x),
-        #                     random.randint(-top_left_y, top_left_y)))
-        cars.append(AutoCar(len(cars), "them", car_images["them_ship"], random.randint(-top_left_x, top_left_x),
-                            -500))
-        # cars[len(cars) - 1].velocity = 1
+    # for i in range(0, 5):
+    #     # cars.append(AutoCar(len(cars), "n", car_images["red"], random.choice([int(-top_left_x) + 100, int(top_left_x) - 100]),
+    #     #                     random.randrange(int(-top_left_y), int(top_left_y), 1)))
+    #     # cars.append(AutoCar(len(cars), "n", car_images["red"], random.randint(-top_left_x, top_left_x),
+    #     #                     random.randint(-top_left_y, top_left_y)))
+    #     cars.append(AutoCar(len(cars), "us", images.us_ship, car_images["us_ship"], random.randint(-top_left_x, top_left_x),
+    #                         500))
+    #     # cars[len(cars) - 1].velocity = 1
+    #
+    # for i in range(0, 20):
+    #     # cars.append(AutoCar(len(cars), "y", car_images["green"], random.choice([int(-top_left_x) + 100, int(top_left_x) - 100]),
+    #     #                     random.randrange(int(-top_left_y), int(top_left_y), 1)))
+    #     # cars.append(AutoCar(len(cars), "y", car_images["green"], random.randint(-top_left_x, top_left_x),
+    #     #                     random.randint(-top_left_y, top_left_y)))
+    #     cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], random.randint(-top_left_x, top_left_x),
+    #                         -500))
+    #     cars[len(cars) - 1].velocity = 1
+    for y in range(7):
+        for x in range(-10, 10):
+            cars.append(AutoCar(len(cars), "them", images.them_ship, car_images["them_ship"], x*70, y*70 - HEIGHT/2 - 200))
+            cars[len(cars) - 1].velocity = 1
 
 
 initialize()
@@ -304,28 +430,29 @@ def draw():
               color, 35)
 
     # Show cars
-    for car in cars:
-        car.draw()
+    for sprite in cars + lasers:
+        sprite.draw()
 
 
 def update():
     global game_over
-    global cars
+    global cars, lasers
 
     if game_over:
         if keyboard.space:
             cars = []
+            lasers = []
             initialize()
             game_over = False
         return
 
-    for car in cars:
-        car.update()
+    for sprite in cars + lasers:
+        sprite.update()
 
     # If heroes are all killed, let the enemies kill one another.
     counter = 0
     for car in cars:
-        if car.run and car.type == "us":
+        if car.run and car.type in ["us", "you"]:
             counter += 1
     if counter == 0:
         for car in cars:
@@ -389,6 +516,7 @@ def theme():
 
 theme()
 clock.schedule_interval(theme, 96)
+clock.schedule_interval(update, 0.1)
 
 
 pgzrun.go()
