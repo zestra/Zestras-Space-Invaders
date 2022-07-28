@@ -1,10 +1,12 @@
 # Zestras-Space-Invaders
 Welcome to my version of Space Invaders!
 
-# *ALERT* : The drafts shown in this README are drafts 6 to 7. Due to some unknown reason, my PyCharm is delaying in commiting these 2 drafts, therefore, you might not see the features mentioned in the current drafts. I apologise for this inconvenience, and am currently working on the problem. Thank you for your attention.
-
 I should give credit to [seanmtracey](https://github.com/seanmtracey) for borrowing the spacecraft images from his [book](https://github.com/seanmtracey/Games-with-Pygame).
 (I'm not a great artist you see...)
+
+## by the way...
+I have now successfully committed draft 6 and more, and so this directory is up to date, and all the features listed below are included.
+And, I would like to note that unless you don't understand what I mean by "successfully committed", it is because I had a problem commiting files before, and now it works properly.
 
 # Screenshots
 
